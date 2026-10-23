@@ -15,6 +15,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -132,6 +133,36 @@ public class MainActivity extends Activity {
         body.setOrientation(LinearLayout.VERTICAL);
         body.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1f));
         body.addView(content, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        LinearLayout brandBar = new LinearLayout(this);
+        brandBar.setOrientation(LinearLayout.HORIZONTAL);
+        brandBar.setGravity(Gravity.CENTER_VERTICAL);
+        brandBar.setPadding(dp(12), dp(4), dp(12), dp(4));
+        brandBar.setBackgroundColor(Color.rgb(15, 29, 23));
+
+        ImageView brandLogo = new ImageView(this);
+        brandLogo.setImageResource(com.lagerloger.handheld.R.drawable.crate_captain);
+        brandLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brandBar.addView(brandLogo, new LinearLayout.LayoutParams(dp(48), dp(48)));
+
+        LinearLayout brandCopy = new LinearLayout(this);
+        brandCopy.setOrientation(LinearLayout.VERTICAL);
+        brandCopy.setPadding(dp(10), 0, 0, 0);
+        TextView brandName = new TextView(this);
+        brandName.setText("LagerLoger");
+        brandName.setTextColor(Color.rgb(248, 244, 230));
+        brandName.setTextSize(16);
+        brandName.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        brandCopy.addView(brandName, new LinearLayout.LayoutParams(-2, -2));
+        TextView brandCompany = new TextView(this);
+        brandCompany.setText("INT  ·  WAREHOUSE");
+        brandCompany.setTextColor(Color.rgb(170, 205, 181));
+        brandCompany.setTextSize(10);
+        brandCompany.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        brandCopy.addView(brandCompany, new LinearLayout.LayoutParams(-2, -2));
+        brandBar.addView(brandCopy, new LinearLayout.LayoutParams(-2, -2));
+
+        root.addView(brandBar, new LinearLayout.LayoutParams(-1, dp(56)));
         root.addView(body, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         LinearLayout tabs = new LinearLayout(this);
