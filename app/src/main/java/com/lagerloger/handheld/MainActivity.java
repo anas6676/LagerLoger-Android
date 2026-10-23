@@ -24,10 +24,12 @@ import org.json.JSONObject;
 public class MainActivity extends Activity {
     private static final String SCAN_ACTION = "com.lagerloger.handheld.SCAN";
     private static final String SCAN_DATA_EXTRA = "com.symbol.datawedge.data_string";
-    private static final String SCAN_INPUT_SELECTOR = "input[placeholder='READY TO SCAN...']";
+    private static final String SEARCH_SCAN_INPUT = "input[placeholder='READY TO SCAN...']";
+    private static final String CRQ_SCAN_INPUT = "input[placeholder*='Zebra Laser Ready'],input[placeholder*='Typing mode active']";
     private static final String SERVER = "http://192.168.1.129:3000";
     private static final String PICK_HUB = SERVER + "/m/collect";
     private static final String SEARCH = SERVER + "/m/search";
+    private static final String CRQ_SCANNER = SERVER + "/m/crq-scanner";
     private static final String HOST = "192.168.1.129";
 
     private WebView webView;
@@ -35,6 +37,7 @@ public class MainActivity extends Activity {
     private Button retryButton;
     private Button pickHubButton;
     private Button searchButton;
+    private Button crqScannerButton;
     private String currentUrl = PICK_HUB;
     private String pendingScan;
 
@@ -138,8 +141,10 @@ public class MainActivity extends Activity {
         tabs.setBackgroundColor(Color.rgb(18, 22, 30));
         pickHubButton = createTab("Pick-Hub", v -> open(PICK_HUB));
         searchButton = createTab("Search", v -> open(SEARCH));
+        crqScannerButton = createTab("CRQ Scan", v -> open(CRQ_SCANNER));
         tabs.addView(pickHubButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
         tabs.addView(searchButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
+        tabs.addView(crqScannerButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
         root.addView(tabs, new LinearLayout.LayoutParams(-1, dp(64)));
 
         setContentView(root);
@@ -184,12 +189,20 @@ public class MainActivity extends Activity {
         if (data == null || data.trim().isEmpty()) return;
 
         pendingScan = data.trim();
-        String selectorCheck = "!!document.querySelector(\"" + SCAN_INPUT_SELECTOR + "\")";
+        String selectorCheck = "(function(){var s=location.pathname==='/m/crq-scanner'?\""
+                + CRQ_SCAN_INPUT + "\":\"" + SEARCH_SCAN_INPUT + "\";return !!document.querySelector(s);})()";
         webView.evaluateJavascript(selectorCheck, value -> {
             if ("true".equals(value)) {
                 deliverPendingScan();
             } else {
-                open(SEARCH);
+                webView.evaluateJavascript("location.pathname", path -> {
+                    if ("\"/m/crq-scanner\"".equals(path)) {
+                        pendingScan = null;
+                        android.widget.Toast.makeText(this, "Open a batch and its scan screen first.", android.widget.Toast.LENGTH_SHORT).show();
+                    } else {
+                        open(SEARCH);
+                    }
+                });
             }
         });
     }
@@ -198,7 +211,8 @@ public class MainActivity extends Activity {
         if (pendingScan == null || webView == null) return;
         String scan = JSONObject.quote(pendingScan);
         String script = "(function(value){"
-                + "var input=document.querySelector(\"" + SCAN_INPUT_SELECTOR + "\");"
+                + "var selector=location.pathname==='/m/crq-scanner'?\"" + CRQ_SCAN_INPUT + "\":\"" + SEARCH_SCAN_INPUT + "\";"
+                + "var input=document.querySelector(selector);"
                 + "if(!input)return false;"
                 + "input.focus();input.select();"
                 + "var setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;"
@@ -248,7 +262,8 @@ public class MainActivity extends Activity {
     private boolean isAllowedPath(String path) {
         return "/m/collect".equals(path)
                 || "/m/search".equals(path)
-                || (path != null && path.startsWith("/m/search/"));
+                || (path != null && path.startsWith("/m/search/"))
+                || "/m/crq-scanner".equals(path);
     }
 
     private void installMobileAppRules() {
@@ -257,7 +272,7 @@ public class MainActivity extends Activity {
                 + "if(!style){style=document.createElement('style');style.id='lagerloger-wrapper-style';"
                 + "style.textContent='nav.m-glass{display:none!important}body>div{padding-bottom:0!important}';document.head.appendChild(style);}"
                 + "if(window.__lagerlogerWrapperInstalled)return;window.__lagerlogerWrapperInstalled=true;"
-                + "var allowed=function(p){return p==='/m/collect'||p==='/m/search'||p.indexOf('/m/search/')===0;};"
+                + "var allowed=function(p){return p==='/m/collect'||p==='/m/search'||p.indexOf('/m/search/')===0||p==='/m/crq-scanner';};"
                 + "var safe=function(u){try{var x=new URL(u,location.href);"
                 + "if(x.origin!=='http://192.168.1.129:3000')return null;"
                 + "if(x.pathname==='/m'||x.pathname==='/m/')return '/m/collect';"
@@ -273,10 +288,12 @@ public class MainActivity extends Activity {
     }
 
     private void updateTabState() {
-        if (pickHubButton == null || searchButton == null) return;
-        boolean isSearch = currentUrl != null && currentUrl.contains("/m/search");
-        styleTab(pickHubButton, !isSearch);
+        if (pickHubButton == null || searchButton == null || crqScannerButton == null) return;
+        boolean isCrqScanner = currentUrl != null && currentUrl.contains("/m/crq-scanner");
+        boolean isSearch = !isCrqScanner && currentUrl != null && currentUrl.contains("/m/search");
+        styleTab(pickHubButton, !isSearch && !isCrqScanner);
         styleTab(searchButton, isSearch);
+        styleTab(crqScannerButton, isCrqScanner);
     }
 
     private void styleTab(Button button, boolean active) {
