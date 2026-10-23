@@ -1,6 +1,7 @@
 package com.lagerloger.handheld;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -18,8 +19,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.net.URI;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
+    private static final String SCAN_ACTION = "com.lagerloger.handheld.SCAN";
+    private static final String SCAN_DATA_EXTRA = "com.symbol.datawedge.data_string";
+    private static final String SCAN_INPUT_SELECTOR = "input[placeholder='READY TO SCAN...']";
     private static final String SERVER = "http://192.168.1.129:3000";
     private static final String PICK_HUB = SERVER + "/m/collect";
     private static final String SEARCH = SERVER + "/m/search";
@@ -31,6 +36,7 @@ public class MainActivity extends Activity {
     private Button pickHubButton;
     private Button searchButton;
     private String currentUrl = PICK_HUB;
+    private String pendingScan;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +84,7 @@ public class MainActivity extends Activity {
                 currentUrl = normalizeUrl(url);
                 updateTabState();
                 installMobileAppRules();
+                deliverPendingScan();
             }
 
             @Override
@@ -137,6 +144,7 @@ public class MainActivity extends Activity {
 
         setContentView(root);
         webView.loadUrl(PICK_HUB);
+        handleDataWedgeIntent(getIntent());
     }
 
     private Button createTab(String text, View.OnClickListener listener) {
@@ -161,6 +169,47 @@ public class MainActivity extends Activity {
     private void open(String url) {
         currentUrl = url;
         if (webView != null) webView.loadUrl(url);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleDataWedgeIntent(intent);
+    }
+
+    private void handleDataWedgeIntent(Intent intent) {
+        if (intent == null || !SCAN_ACTION.equals(intent.getAction()) || webView == null) return;
+        String data = intent.getStringExtra(SCAN_DATA_EXTRA);
+        if (data == null || data.trim().isEmpty()) return;
+
+        pendingScan = data.trim();
+        String selectorCheck = "!!document.querySelector(\"" + SCAN_INPUT_SELECTOR + "\")";
+        webView.evaluateJavascript(selectorCheck, value -> {
+            if ("true".equals(value)) {
+                deliverPendingScan();
+            } else {
+                open(SEARCH);
+            }
+        });
+    }
+
+    private void deliverPendingScan() {
+        if (pendingScan == null || webView == null) return;
+        String scan = JSONObject.quote(pendingScan);
+        String script = "(function(value){"
+                + "var input=document.querySelector(\"" + SCAN_INPUT_SELECTOR + "\");"
+                + "if(!input)return false;"
+                + "input.focus();input.select();"
+                + "var setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;"
+                + "setter.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));"
+                + "setTimeout(function(){input.focus();"
+                + "input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));"
+                + "input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));"
+                + "},100);return true;}) (" + scan + ");";
+        webView.evaluateJavascript(script, result -> {
+            if ("true".equals(result)) pendingScan = null;
+        });
     }
 
     private boolean handleNavigation(WebView view, String url) {

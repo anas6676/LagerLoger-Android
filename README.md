@@ -2,7 +2,7 @@
 
 This is a standalone Android wrapper. It does not modify or copy the LagerLoger web app. It opens the existing internal web server at `192.168.1.129:3000`, starts in Pick-Hub, and provides native Pick-Hub and Search tabs. Search result detail pages remain available. The web app's own mobile bottom navigation is hidden in the wrapper.
 
-The device must be on the internal Wi-Fi and the LagerLoger server must be running. This app needs local network access; it does not need public internet access. Barcode scans are expected to arrive as keyboard input from the Zebra DataWedge service.
+The device must be on the internal Wi-Fi and the LagerLoger server must be running. This app needs local network access; it does not need public internet access. Barcode scans are delivered from Zebra DataWedge to the Android app through Intent Output.
 
 ## Build on a computer
 
@@ -24,7 +24,14 @@ For a durable release/update path, create a signed release APK in Android Studio
 
 ## Scanner setup
 
-DataWedge is provided on Zebra devices. Set up a DataWedge profile associated with package `com.lagerloger.handheld`, enable the built-in barcode scanner and **Keystroke output**, and enable sending an **Enter** key after each scan. Open Search and scan a known device barcode. The `/m/search` page focuses its scan field and submits on Enter.
+DataWedge is provided on Zebra devices. Set up a DataWedge profile associated with package `com.lagerloger.handheld` and all activities. Enable **Barcode input** and **Intent output**, then set:
+
+- **Intent action:** `com.lagerloger.handheld.SCAN`
+- **Intent category:** `android.intent.category.DEFAULT`
+- **Intent delivery:** `Send via startActivity`
+- **Keystroke output:** disabled, to prevent duplicate delivery
+
+No Enter suffix is needed. The Android app puts each scan into the existing Search scan field and submits it. If the search returns no match, the web page's existing behavior selects the scanned text so the next scan replaces it. The activity is declared `singleTop` so DataWedge can deliver scans to the running app. The scan value is read from `com.symbol.datawedge.data_string`.
 
 ## Network address
 
