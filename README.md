@@ -1,6 +1,6 @@
 # LagerLoger Handheld for Zebra TC27
 
-This is a standalone Android wrapper. It does not modify or copy the LagerLoger web app. It opens the existing internal web server at `192.168.1.129:3000`, starts in Pick-Hub, and provides native Pick-Hub, Search, and CRQ Scanner tabs. Search result detail pages remain available. The web app's own mobile bottom navigation is hidden in the wrapper.
+This is a standalone Android wrapper. It does not modify or copy the LagerLoger web app. It opens the existing internal web server at `192.168.1.129:3000`, starts in Pick-Hub, and provides native Pick-Hub, Search, CRQ Scanner, and Goods Receipt tabs. Search result detail pages remain available. The web app's own mobile bottom navigation is hidden in the wrapper.
 
 The device must be on the internal Wi-Fi and the LagerLoger server must be running. This app needs local network access; it does not need public internet access. Barcode scans are delivered from Zebra DataWedge to the Android app through Intent Output.
 
@@ -31,7 +31,7 @@ DataWedge is provided on Zebra devices. Set up a DataWedge profile associated wi
 - **Intent delivery:** `Send via startActivity`
 - **Keystroke output:** disabled, to prevent duplicate delivery
 
-No Enter suffix is needed. The Android app puts scans into the current Search or CRQ Scanner field and submits/processes them. In CRQ Scanner, open a batch and its scanning screen before scanning carton serial/MAC barcodes. If a Search returns no match, the web page's existing behavior selects the scanned text so the next scan replaces it. The activity is declared `singleTop` so DataWedge can deliver scans to the running app. The scan value is read from `com.symbol.datawedge.data_string`.
+No Enter suffix is needed. The Android app puts scans into the current Search or CRQ Scanner field and submits/processes them. On Goods Receipt, it forwards the scanned characters and Enter key to the page's Zebra scan handler for shelf and device barcodes. In CRQ Scanner, open a batch and its scanning screen before scanning carton serial/MAC barcodes. If a Search returns no match, the web page's existing behavior selects the scanned text so the next scan replaces it. The activity is declared `singleTop` so DataWedge can deliver scans to the running app. The scan value is read from `com.symbol.datawedge.data_string`.
 
 ## Network address
 

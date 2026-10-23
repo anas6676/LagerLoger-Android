@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
     private static final String PICK_HUB = SERVER + "/m/collect";
     private static final String SEARCH = SERVER + "/m/search";
     private static final String CRQ_SCANNER = SERVER + "/m/crq-scanner";
+    private static final String GOODS_RECEIPT = SERVER + "/m/receipt";
     private static final String HOST = "192.168.1.129";
 
     private WebView webView;
@@ -39,6 +40,7 @@ public class MainActivity extends Activity {
     private Button pickHubButton;
     private Button searchButton;
     private Button crqScannerButton;
+    private Button receiptButton;
     private String currentUrl = PICK_HUB;
     private String pendingScan;
 
@@ -173,9 +175,11 @@ public class MainActivity extends Activity {
         pickHubButton = createTab("Pick-Hub", v -> open(PICK_HUB));
         searchButton = createTab("Search", v -> open(SEARCH));
         crqScannerButton = createTab("CRQ Scan", v -> open(CRQ_SCANNER));
+        receiptButton = createTab("Receipt", v -> open(GOODS_RECEIPT));
         tabs.addView(pickHubButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
         tabs.addView(searchButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
         tabs.addView(crqScannerButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
+        tabs.addView(receiptButton, new LinearLayout.LayoutParams(0, dp(52), 1f));
         root.addView(tabs, new LinearLayout.LayoutParams(-1, dp(64)));
 
         setContentView(root);
@@ -220,7 +224,7 @@ public class MainActivity extends Activity {
         if (data == null || data.trim().isEmpty()) return;
 
         pendingScan = data.trim();
-        String selectorCheck = "(function(){var s=location.pathname==='/m/crq-scanner'?\""
+        String selectorCheck = "(function(){if(location.pathname==='/m/receipt')return !!document.querySelector('input[tabindex=\"-1\"],input[placeholder^=\"Type Serial Number\"]');var s=location.pathname==='/m/crq-scanner'?\""
                 + CRQ_SCAN_INPUT + "\":\"" + SEARCH_SCAN_INPUT + "\";return !!document.querySelector(s);})()";
         webView.evaluateJavascript(selectorCheck, value -> {
             if ("true".equals(value)) {
@@ -230,7 +234,7 @@ public class MainActivity extends Activity {
                     if ("\"/m/crq-scanner\"".equals(path)) {
                         pendingScan = null;
                         android.widget.Toast.makeText(this, "Open a batch and its scan screen first.", android.widget.Toast.LENGTH_SHORT).show();
-                    } else {
+                    } else if (!"\"/m/receipt\"".equals(path)) {
                         open(SEARCH);
                     }
                 });
@@ -242,6 +246,9 @@ public class MainActivity extends Activity {
         if (pendingScan == null || webView == null) return;
         String scan = JSONObject.quote(pendingScan);
         String script = "(function(value){"
+                + "if(location.pathname==='/m/receipt'){"
+                + "for(var i=0;i<value.length;i++){var key=value.charAt(i);window.dispatchEvent(new KeyboardEvent('keydown',{key:key,code:'',keyCode:key.charCodeAt(0),which:key.charCodeAt(0),bubbles:true,cancelable:true}));}"
+                + "window.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));return true;}"
                 + "var selector=location.pathname==='/m/crq-scanner'?\"" + CRQ_SCAN_INPUT + "\":\"" + SEARCH_SCAN_INPUT + "\";"
                 + "var input=document.querySelector(selector);"
                 + "if(!input)return false;"
@@ -294,6 +301,7 @@ public class MainActivity extends Activity {
         return "/m/collect".equals(path)
                 || "/m/search".equals(path)
                 || (path != null && path.startsWith("/m/search/"))
+                || "/m/receipt".equals(path)
                 || "/m/crq-scanner".equals(path);
     }
 
@@ -303,7 +311,7 @@ public class MainActivity extends Activity {
                 + "if(!style){style=document.createElement('style');style.id='lagerloger-wrapper-style';"
                 + "style.textContent='nav.m-glass{display:none!important}body>div{padding-bottom:0!important}';document.head.appendChild(style);}"
                 + "if(window.__lagerlogerWrapperInstalled)return;window.__lagerlogerWrapperInstalled=true;"
-                + "var allowed=function(p){return p==='/m/collect'||p==='/m/search'||p.indexOf('/m/search/')===0||p==='/m/crq-scanner';};"
+                + "var allowed=function(p){return p==='/m/collect'||p==='/m/search'||p.indexOf('/m/search/')===0||p==='/m/crq-scanner'||p==='/m/receipt';};"
                 + "var safe=function(u){try{var x=new URL(u,location.href);"
                 + "if(x.origin!=='http://192.168.1.129:3000')return null;"
                 + "if(x.pathname==='/m'||x.pathname==='/m/')return '/m/collect';"
@@ -319,12 +327,14 @@ public class MainActivity extends Activity {
     }
 
     private void updateTabState() {
-        if (pickHubButton == null || searchButton == null || crqScannerButton == null) return;
+        if (pickHubButton == null || searchButton == null || crqScannerButton == null || receiptButton == null) return;
         boolean isCrqScanner = currentUrl != null && currentUrl.contains("/m/crq-scanner");
-        boolean isSearch = !isCrqScanner && currentUrl != null && currentUrl.contains("/m/search");
-        styleTab(pickHubButton, !isSearch && !isCrqScanner);
+        boolean isReceipt = currentUrl != null && currentUrl.contains("/m/receipt");
+        boolean isSearch = !isCrqScanner && !isReceipt && currentUrl != null && currentUrl.contains("/m/search");
+        styleTab(pickHubButton, !isSearch && !isCrqScanner && !isReceipt);
         styleTab(searchButton, isSearch);
         styleTab(crqScannerButton, isCrqScanner);
+        styleTab(receiptButton, isReceipt);
     }
 
     private void styleTab(Button button, boolean active) {
